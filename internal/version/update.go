@@ -2,8 +2,11 @@ package version
 
 import (
 	"archive/tar"
+	"bufio"
 	"compress/gzip"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -68,6 +71,10 @@ func Update(ctx context.Context, opts UpdateOptions) (*UpdateResult, error) {
 	if err != nil {
 		return nil, err
 	}
+	checksumAsset, err := selectChecksumAsset(rel)
+	if err != nil {
+		return nil, err
+	}
 
 	tmp, err := os.MkdirTemp("", "ainovel-cli-update-*")
 	if err != nil {
@@ -75,8 +82,15 @@ func Update(ctx context.Context, opts UpdateOptions) (*UpdateResult, error) {
 	}
 	defer os.RemoveAll(tmp)
 
+	checksumPath := filepath.Join(tmp, "checksums.txt")
+	if err := download(ctx, client, checksumAsset.BrowserDownloadURL, checksumPath); err != nil {
+		return nil, err
+	}
 	archivePath := filepath.Join(tmp, "pkg.tar.gz")
 	if err := download(ctx, client, asset.BrowserDownloadURL, archivePath); err != nil {
+		return nil, err
+	}
+	if err := verifyChecksum(archivePath, checksumPath, asset.Name); err != nil {
 		return nil, err
 	}
 	extracted, err := extractBinary(archivePath, tmp, opts.BinaryName)
@@ -134,6 +148,61 @@ func selectAsset(rel *release, binaryName string) (releaseAsset, error) {
 		}
 	}
 	return releaseAsset{}, fmt.Errorf("release %s không tìm thấy gói cài đặt cho nền tảng hiện tại *%s", rel.TagName, suffix)
+}
+
+// checksumSuffix khớp với checksum.name_template trong .goreleaser.yml.
+const checksumSuffix = "_checksums.txt"
+
+// selectChecksumAsset tìm file checksum của release. Thiếu file thì từ chối cập nhật
+// (fail closed): không thể xác minh gói tải về thì không được thay file thực thi.
+func selectChecksumAsset(rel *release) (releaseAsset, error) {
+	for _, asset := range rel.Assets {
+		if strings.HasSuffix(asset.Name, checksumSuffix) && asset.BrowserDownloadURL != "" {
+			return asset, nil
+		}
+	}
+	return releaseAsset{}, fmt.Errorf("release %s không có file *%s, không thể xác minh gói cài đặt", rel.TagName, checksumSuffix)
+}
+
+// verifyChecksum so SHA-256 của archive với dòng tương ứng assetName trong file checksum
+// (định dạng sha256sum: "<hex>  <tên file>").
+func verifyChecksum(archivePath, checksumPath, assetName string) error {
+	want, err := lookupChecksum(checksumPath, assetName)
+	if err != nil {
+		return err
+	}
+	f, err := os.Open(archivePath)
+	if err != nil {
+		return fmt.Errorf("open archive: %w", err)
+	}
+	defer f.Close()
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return fmt.Errorf("hash archive: %w", err)
+	}
+	if got := hex.EncodeToString(h.Sum(nil)); !strings.EqualFold(got, want) {
+		return fmt.Errorf("checksum không khớp cho %s: mong đợi %s, nhận %s — đã huỷ cập nhật", assetName, want, got)
+	}
+	return nil
+}
+
+func lookupChecksum(checksumPath, assetName string) (string, error) {
+	f, err := os.Open(checksumPath)
+	if err != nil {
+		return "", fmt.Errorf("open checksums: %w", err)
+	}
+	defer f.Close()
+	sc := bufio.NewScanner(f)
+	for sc.Scan() {
+		fields := strings.Fields(sc.Text())
+		if len(fields) == 2 && strings.TrimPrefix(fields[1], "*") == assetName {
+			return fields[0], nil
+		}
+	}
+	if err := sc.Err(); err != nil {
+		return "", fmt.Errorf("read checksums: %w", err)
+	}
+	return "", fmt.Errorf("file checksum không có dòng cho %s, đã huỷ cập nhật", assetName)
 }
 
 func assetSuffix() (string, error) {

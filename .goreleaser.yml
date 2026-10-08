@@ -70,5 +70,5 @@ changelog:
 
 release:
   github:
-    owner: voocel
+    owner: phanviethungtk
     name: ainovel-cli
