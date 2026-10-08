@@ -58,17 +58,18 @@ func buildLocations(volumes []domain.VolumeOutline) map[int]chapterLocation {
 	return locs
 }
 
-// chapterHeaderRe khớp dòng đầu tiêu đề Markdown có số chương (# 第N章 / ## 第 12 章 ...).
-var chapterHeaderRe = regexp.MustCompile(`^#+\s+第.+?章`)
+// chapterHeaderRe khớp dòng đầu tiêu đề Markdown có số chương:
+// tiếng Việt (# Chương 5 / ## chương 12: …) và tiếng Trung (# 第N章 / ## 第 12 章 …).
+var chapterHeaderRe = regexp.MustCompile(`(?i)^#+\s+(?:chương\s*\d+|第.+?章)`)
 
 // atxTitleRe trích xuất phần văn bản của tiêu đề ATX (# tiêu đề).
 var atxTitleRe = regexp.MustCompile(`^#{1,6}\s+(.+?)\s*$`)
 
 // stripChapterTitleHeader loại bỏ dòng đầu nếu đó là tiêu đề chương sẽ bị trùng lặp
-// với tiêu đề thống nhất của bộ xuất. Hai trường hợp: ① "# 第N章 …" (có số chương);
+// với tiêu đề thống nhất của bộ xuất. Hai trường hợp: ① "# Chương N …" / "# 第N章 …" (có số chương);
 // ② tiêu đề markdown có nội dung chính xác là tiêu đề chương hiện tại
 // (Người viết thường viết tên chương thuần túy làm tiêu đề dòng đầu, ví dụ "# 边村浮生",
-// trùng với "第 N 章 边村浮生" do bộ xuất tạo ra). Các h1 khác (như "# 序章") được
+// trùng với "Chương N  边村浮生" do bộ xuất tạo ra). Các h1 khác (như "# 序章") được
 // coi là một phần của nội dung và giữ nguyên.
 // Bên gọi có trách nhiệm TrimSpace trước, nên các dòng trống đầu không cần xét.
 func stripChapterTitleHeader(content, title string) string {
@@ -97,7 +98,7 @@ func isChapterTitleLine(line, title string) bool {
 //
 // Thứ tự chương do chapters quyết định (bên gọi đã sắp xếp tăng dần và loại trùng theo số chương).
 // bodies/titleIdx/locations đều xử lý theo kiểu "thiếu thì hạ cấp": thiếu tiêu đề chỉ xuất
-// "第 N 章"; thiếu định vị phân cấp thì coi như đề cương phẳng.
+// "Chương N"; thiếu định vị phân cấp thì coi như đề cương phẳng.
 func renderTXT(
 	novelName string,
 	chapters []int,
@@ -119,16 +120,16 @@ func renderTXT(
 		if useLayered {
 			if loc, ok := locations[ch]; ok && loc.IsFirstOfVolume {
 				b.WriteString("\n═══════════════════════════════════════════\n")
-				fmt.Fprintf(&b, "           第 %d 卷  %s\n", loc.VolumeIdx, strings.TrimSpace(loc.VolumeTitle))
+				fmt.Fprintf(&b, "           Tập %d  %s\n", loc.VolumeIdx, strings.TrimSpace(loc.VolumeTitle))
 				b.WriteString("═══════════════════════════════════════════\n\n")
 			}
 		}
 
 		title := strings.TrimSpace(titleIdx[ch])
 		if title != "" {
-			fmt.Fprintf(&b, "第 %d 章  %s\n\n", ch, title)
+			fmt.Fprintf(&b, "Chương %d  %s\n\n", ch, title)
 		} else {
-			fmt.Fprintf(&b, "第 %d 章\n\n", ch)
+			fmt.Fprintf(&b, "Chương %d\n\n", ch)
 		}
 
 		body := stripChapterTitleHeader(strings.TrimSpace(bodies[ch]), title)

@@ -28,10 +28,10 @@ Chuỗi Markdown. Dòng đầu tiên phải là tên sách thực được phân
 ## Xung đột cốt lõi
 ...
 
-## Mục tiêu của nhân vật chính
+## Mục tiêu nhân vật chính
 ...
 
-## Hướng kết thúc
+## Hướng kết cục
 （Suy luận dựa trên hướng đi của nội dung; nếu nội dung chưa nêu rõ, đưa ra hướng khả năng gần nhất và ghi chú "suy luận"）
 
 ## Vùng cấm viết

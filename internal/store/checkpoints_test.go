@@ -190,6 +190,10 @@ func TestCheckpointStore_SeqNotConsumedOnWriteFailure(t *testing.T) {
 		t.Fatalf("seed append: %v", err)
 	}
 
+	// root bỏ qua quyền file nên không giả lập được lỗi ghi
+	if os.Geteuid() == 0 {
+		t.Skip("chạy bằng root: chmod 0444 không chặn được ghi")
+	}
 	// Đổi file jsonl thành chỉ đọc để lần OpenFile tiếp theo bị lỗi ghi
 	jsonlPath := filepath.Join(dir, checkpointsFile)
 	if err := os.Chmod(jsonlPath, 0o444); err != nil {

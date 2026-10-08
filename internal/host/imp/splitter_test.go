@@ -152,7 +152,7 @@ func TestSplitText_NoTitle_FallsBack(t *testing.T) {
 	if len(got) != 2 {
 		t.Fatalf("want 2, got %d", len(got))
 	}
-	if got[0].Title != "第1章" || got[1].Title != "第2章" {
+	if got[0].Title != "Chương 1" || got[1].Title != "Chương 2" {
 		t.Errorf("fallback titles wrong: %+v", got)
 	}
 }
@@ -213,7 +213,7 @@ func TestSplitText_FullWidthSpace(t *testing.T) {
 	if got[0].Title != "风起" {
 		t.Errorf("ch1 title: %q", got[0].Title)
 	}
-	if got[1].Title != "第2章" { // chỉ có dấu cách toàn-độ ở cuối → dùng tiêu đề placeholder dự phòng
+	if got[1].Title != "Chương 2" { // chỉ có dấu cách toàn-độ ở cuối → dùng tiêu đề placeholder dự phòng
 		t.Errorf("ch2 title: %q", got[1].Title)
 	}
 }
@@ -344,5 +344,46 @@ func TestSplitText_BracketWrapped(t *testing.T) {
 	}
 	if got[2].Title != "楔子" {
 		t.Errorf("bracket spkw title: %q", got[2].Title)
+	}
+}
+
+func TestSplitText_Vietnamese(t *testing.T) {
+	src := `Mở đầu
+Đêm ấy trời đổ mưa.
+
+Chương 1: Gặp gỡ
+Trương Tam bước vào quán trọ.
+
+## Chương 2 - Ly biệt
+Trời sáng, Trương Tam cáo từ.
+
+chương 3: Bình minh
+Chương trình của buổi sáng bắt đầu.
+
+Quyển 2 Phong vân
+Tuyết rơi.
+
+Vĩ thanh
+Hết.`
+
+	got := splitText(src, defaultChapterRegex)
+	want := []struct{ title, headOf string }{
+		{"Mở đầu", "Đêm ấy"},
+		{"Gặp gỡ", "Trương Tam bước vào"},
+		{"Ly biệt", "Trời sáng"},
+		{"Bình minh", "Chương trình của buổi sáng"}, // chữ thường vẫn nhận; "Chương trình" không phải tiêu đề
+		{"Phong vân", "Tuyết rơi"},
+		{"Vĩ thanh", "Hết"},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("want %d chapters, got %d: %+v", len(want), len(got), got)
+	}
+	for i, w := range want {
+		if got[i].Title != w.title {
+			t.Errorf("ch%d title: got %q want %q", i+1, got[i].Title, w.title)
+		}
+		if !strings.HasPrefix(got[i].Content, w.headOf) {
+			t.Errorf("ch%d content head: got %q want prefix %q", i+1, got[i].Content, w.headOf)
+		}
 	}
 }

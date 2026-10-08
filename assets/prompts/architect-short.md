@@ -43,25 +43,25 @@ Dòng đầu tiên phải đưa ra tên sách, định dạng `# Tên sách th�
 
 Dùng tiêu đề cấp hai rõ ràng `## Tên tiêu đề` để xuất, tên tiêu đề nên dùng trực tiếp các tên dưới đây để hệ thống phân tích sau này thuận tiện:
 
-- Thể loại và sắc thái
+- Thể loại và tông điệu
 - Định vị thể loại (độc giả mục tiêu, điểm tiêu thụ cốt lõi)
 - Xung đột cốt lõi
 - Mục tiêu nhân vật chính
 - Hướng kết cục
 - Vùng cấm viết
-- Điểm bán khác biệt (ít nhất 2 điểm)
+- Điểm bán hàng khác biệt (ít nhất 2 điểm)
 - Điểm móc khác biệt: điểm hấp dẫn nhất của tập này
 - Cam kết thực hiện cốt lõi: độc giả đọc hết tập này nhận được gì
-- Tại sao tác phẩm này phù hợp với truyện ngắn/thu hồi đơn tập
+- Tính phù hợp truyện ngắn: tại sao tác phẩm này phù hợp với truyện ngắn/thu hồi đơn tập
 
 Mẫu tiêu đề gợi ý:
-- `## Thể loại và sắc thái`
+- `## Thể loại và tông điệu`
 - `## Định vị thể loại`
 - `## Xung đột cốt lõi`
 - `## Mục tiêu nhân vật chính`
 - `## Hướng kết cục`
 - `## Vùng cấm viết`
-- `## Điểm bán khác biệt`
+- `## Điểm bán hàng khác biệt`
 - `## Điểm móc khác biệt`
 - `## Cam kết thực hiện cốt lõi`
 - `## Tính phù hợp truyện ngắn`

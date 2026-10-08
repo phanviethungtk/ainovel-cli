@@ -2,6 +2,7 @@ package domain
 
 import (
 	"fmt"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -27,7 +28,41 @@ func ShouldArcReview(isArcEnd, isVolumeEnd bool, volume, arc int) (bool, string)
 	return false, ""
 }
 
-// WordCount đếm số ký tự theo rune.
+// WordCount đếm "số chữ" của chính văn — đơn vị mà chapter_words và mọi mục tiêu độ dài dùng.
+//   - Tiếng Trung (Hán tự chiếm ưu thế): đếm theo rune như quy ước 字数 (giữ nguyên số liệu cũ).
+//   - Tiếng Việt / chữ Latin: đếm theo âm tiết (cụm chữ/số liền nhau). Một Hán tự tương ứng
+//     khoảng một âm tiết, nên ngưỡng 3000-6000 giữ đúng độ dài chương dự định; đếm theo
+//     ký tự sẽ khiến chương tiếng Việt ngắn đi khoảng 5 lần.
 func WordCount(content string) int {
-	return utf8.RuneCountInString(content)
+	if IsHanDominant(content) {
+		return utf8.RuneCountInString(content)
+	}
+	n := 0
+	inWord := false
+	for _, r := range content {
+		isWord := unicode.IsLetter(r) || unicode.IsDigit(r) || (inWord && unicode.Is(unicode.Mn, r))
+		if isWord && (!inWord || unicode.Is(unicode.Han, r)) {
+			n++
+		}
+		inWord = isWord
+	}
+	return n
+}
+
+// IsHanDominant trả về true khi văn bản là tiếng Trung: số Hán tự nhiều hơn số từ Latin
+// (đếm theo từ, vì một từ "pattern" tương đương một chữ Hán chứ không phải bảy).
+func IsHanDominant(text string) bool {
+	han, latinWords := 0, 0
+	inLatin := false
+	for _, r := range text {
+		isLatin := unicode.Is(unicode.Latin, r) || (inLatin && unicode.Is(unicode.Mn, r))
+		if isLatin && !inLatin {
+			latinWords++
+		}
+		inLatin = isLatin
+		if unicode.Is(unicode.Han, r) {
+			han++
+		}
+	}
+	return han > latinWords
 }

@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"unicode"
 )
 
 // minChapters — ít hơn số chương này thì không xuất thống kê: mẫu quá nhỏ, tần suất không có ý nghĩa.
@@ -77,20 +78,23 @@ type TitleStat struct {
 
 // patternDefs là các khuôn câu AI phổ biến. Số đếm là xấp xỉ (regex không phân tích ngữ pháp),
 // mục đích là so sánh theo chiều dọc với đường cơ sở của chính tác phẩm, độ chính xác tuyệt đối không quan trọng.
+// Mỗi lớp khớp cả mẫu tiếng Việt lẫn tiếng Trung (truyện tạo trước khi Việt hoá).
 var patternDefs = []struct {
 	name string
 	re   *regexp.Regexp
 }{
-	{"Câu chỉnh chuẩn『不是…(而)是…』", regexp.MustCompile(`不是[^。！？\n]{1,24}?[，、]?(?:而)?是`)},
-	{"Lượng từ thời gian『X息/X瞬』", regexp.MustCompile(`[一两二三四五六七八九十几数半][息瞬]`)},
-	{"So sánh trực tiếp『像一/仿佛/如同/宛如』", regexp.MustCompile(`像一|仿佛|如同|宛如`)},
-	{"Nhịp im lặng『沉默了/没有说话/没有回头』", regexp.MustCompile(`沉默了|没有说话|没有回头`)},
+	{"Câu chỉnh chuẩn『không phải… mà là…』", regexp.MustCompile(`(?i)không phải[^.!?。！？\n]{1,40}?mà (?:là|chính là)|不是[^。！？\n]{1,24}?[，、]?(?:而)?是`)},
+	{"Lượng từ thời gian『một hơi thở/trong chớp mắt』", regexp.MustCompile(`(?i)(?:một|hai|ba|mấy|vài|nửa|mười) (?:hơi thở|nhịp thở)|trong (?:chớp|nháy) mắt|[一两二三四五六七八九十几数半][息瞬]`)},
+	{"So sánh trực tiếp『như một/như thể/tựa như』", regexp.MustCompile(`(?i)như một|như thể|tựa như|hệt như|giống như|像一|仿佛|如同|宛如`)},
+	{"Nhịp im lặng『im lặng/không nói gì/không quay đầu』", regexp.MustCompile(`(?i)im lặng|trầm mặc|không nói gì|không quay (?:đầu|lại)|không ngoảnh lại|沉默了|没有说话|没有回头`)},
 }
 
 var (
-	sentenceSplit = regexp.MustCompile(`[。！？\n]+`)
-	openingTimeRe = regexp.MustCompile(`夜|清晨|黎明|天亮|醒来|晨光|一整夜`)
-	titlePrefixRe = regexp.MustCompile(`^#{0,2}\s*第[零〇一二三四五六七八九十百千万\d]+章`)
+	sentenceSplit = regexp.MustCompile(`[。！？.!?…\n]+`)
+	openingTimeRe = regexp.MustCompile(`(?i)đêm|sáng sớm|bình minh|rạng sáng|trời sáng|tỉnh dậy|thức dậy|ban mai|夜|清晨|黎明|天亮|醒来|晨光|一整夜`)
+	titlePrefixRe = regexp.MustCompile(`(?i)^#{0,2}\s*(?:chương\s*\d+|第[零〇一二三四五六七八九十百千万\d]+章)`)
+	// phraseSegmentRe tách văn bản tiếng Việt thành đoạn không chứa dấu câu, để cụm từ không vắt qua câu.
+	phraseSegmentRe = regexp.MustCompile(`[^\p{L}\p{M}' ]+`)
 )
 
 // shortEndingRunes — dòng cuối không vượt quá số ký tự này thì tính là "kết thúc ngắn".
@@ -131,7 +135,8 @@ func recentWindow(chapters []string) []string {
 	return chapters[len(chapters)-phraseWindow:]
 }
 
-// minePhrases khai thác các cụm từ 3–6 ký tự xuất hiện nhiều trong cửa sổ.
+// minePhrases khai thác các cụm từ xuất hiện nhiều trong cửa sổ: 3–6 Hán tự (tiếng Trung)
+// hoặc 3–6 âm tiết (tiếng Việt, ngăn bởi dấu cách).
 // Lọc: có dấu câu/khoảng trắng, hư từ/đại từ ở đầu/cuối, trùng danh từ riêng;
 // loại trùng: cụm nào là chuỗi con của cụm đã chọn thì bỏ.
 func minePhrases(chapters []string, stopwords []string) []PhraseStat {
@@ -149,6 +154,7 @@ func minePhrases(chapters []string, stopwords []string) []PhraseStat {
 			counts[string(gram)]++
 		}
 	}
+	wordCounts := mineWordGrams(text, nameSyllables(stopwords))
 
 	stopGrams := stopwordBigrams(stopwords)
 	type cand struct {
@@ -161,6 +167,11 @@ func minePhrases(chapters []string, stopwords []string) []PhraseStat {
 			continue
 		}
 		cands = append(cands, cand{g, c})
+	}
+	for g, c := range wordCounts {
+		if c >= threshold {
+			cands = append(cands, cand{g, c})
+		}
 	}
 	sort.Slice(cands, func(i, j int) bool {
 		if cands[i].count != cands[j].count {
@@ -205,6 +216,67 @@ func validGram(gram []rune) bool {
 		return false
 	}
 	return true
+}
+
+// wordEdgeStop — hư từ/đại từ tiếng Việt: cụm âm tiết bắt đầu hoặc kết thúc bằng chúng
+// không phải cụm từ phong cách (tương đương gramEdgeStop của tiếng Trung).
+var wordEdgeStop = toSet(strings.Fields(`và là của thì mà đã đang sẽ những các một này đó kia với cho để
+	trong ngoài lại cũng vẫn còn rồi nhưng nên vì không có bị được ra vào lên xuống
+	anh cô hắn nàng nó tôi ta y họ ông bà chàng gã mình em chị`))
+
+// mineWordGrams đếm cụm 3–6 âm tiết Latin (tiếng Việt) trong từng đoạn không dấu câu.
+// Cụm chứa âm tiết thuộc tên riêng (so khớp phân biệt hoa thường — tên luôn viết hoa) bị bỏ.
+func mineWordGrams(text string, names map[string]struct{}) map[string]int {
+	counts := make(map[string]int)
+	for _, seg := range phraseSegmentRe.Split(text, -1) {
+		words := strings.Fields(seg)
+		for size := 3; size <= 6; size++ {
+			for i := 0; i+size <= len(words); i++ {
+				gram := words[i : i+size]
+				if validWordGram(gram, names) {
+					counts[strings.ToLower(strings.Join(gram, " "))]++
+				}
+			}
+		}
+	}
+	return counts
+}
+
+func validWordGram(gram []string, names map[string]struct{}) bool {
+	for _, w := range gram {
+		if _, ok := names[w]; ok {
+			return false
+		}
+		for _, r := range w {
+			if r >= 0x4E00 && r <= 0x9FFF { // Hán tự đã được nhánh rune-gram xử lý
+				return false
+			}
+		}
+	}
+	_, firstStop := wordEdgeStop[strings.ToLower(gram[0])]
+	_, lastStop := wordEdgeStop[strings.ToLower(gram[len(gram)-1])]
+	return !firstStop && !lastStop
+}
+
+// nameSyllables tách tên riêng thành các âm tiết viết hoa ("Lâm Phong" → Lâm, Phong).
+func nameSyllables(stopwords []string) map[string]struct{} {
+	m := make(map[string]struct{})
+	for _, w := range stopwords {
+		for _, syl := range strings.Fields(w) {
+			if r := []rune(syl); len(r) > 0 && unicode.IsUpper(r[0]) {
+				m[syl] = struct{}{}
+			}
+		}
+	}
+	return m
+}
+
+func toSet(words []string) map[string]struct{} {
+	m := make(map[string]struct{}, len(words))
+	for _, w := range words {
+		m[w] = struct{}{}
+	}
+	return m
 }
 
 // stopwordBigrams tách danh từ riêng thành các mảnh 2 ký tự: tên người thường xuất hiện

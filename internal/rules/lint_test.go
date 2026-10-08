@@ -47,3 +47,24 @@ func TestLint_NonCJKFragments(t *testing.T) {
 		t.Errorf("severity: %v", v.Severity)
 	}
 }
+
+// Chính văn tiếng Việt: chữ Latin là bình thường, không được báo non_cjk_fragments;
+// Hán tự lẫn vào (mô hình trôi về tiếng Trung) mới là sự thật cần báo.
+func TestLint_VietnameseText(t *testing.T) {
+	if vs := Lint("# Chương 1 Gió nổi\nHắn bước về phía trước.\nĐêm dần sâu."); len(vs) != 0 {
+		t.Errorf("clean Vietnamese text should pass: %+v", vs)
+	}
+	vs := Lint("# Chương 1\nHắn nhìn về phía 青云山, lòng thầm nghĩ 不禁 một chút.")
+	var v *Violation
+	for i := range vs {
+		switch vs[i].Rule {
+		case "non_cjk_fragments":
+			t.Errorf("Vietnamese text must not report non_cjk_fragments: %+v", vs)
+		case "cjk_fragments":
+			v = &vs[i]
+		}
+	}
+	if v == nil || v.Actual != 2 || !strings.Contains(v.Target, "青云山") {
+		t.Fatalf("expected 2 cjk fragments incl. 青云山: %+v", vs)
+	}
+}
