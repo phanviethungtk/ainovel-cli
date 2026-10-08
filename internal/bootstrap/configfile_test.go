@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/voocel/ainovel-cli/internal/errs"
@@ -194,21 +195,21 @@ func TestValidateBase_ProviderOverrideWithoutCredentials(t *testing.T) {
 // sau khi bỏ comment phải là JSON hợp lệ, con trỏ provider cấp cao nhất không được treo lơ lửng,
 // và phải giải thích rõ tư duy “con trỏ” — đây là mẫu người dùng sẽ chép, nếu chính nó lỗi sẽ gây hại.
 func TestExampleConfigIsValidAndSelfConsistent(t *testing.T) {
-	if exampleConfig == “” {
-		t.Fatal(“go:embed chưa có hiệu lực, exampleConfig rỗng”)
+	if exampleConfig == "" {
+		t.Fatal("go:embed chưa có hiệu lực, exampleConfig rỗng")
 	}
 	var cfg Config
 	if err := json.Unmarshal(stripJSONComments([]byte(exampleConfig)), &cfg); err != nil {
-		t.Fatalf(“file ví dụ nội trang sau khi bỏ comment không phải JSON hợp lệ (người dùng chép là gặp họa): %v”, err)
+		t.Fatalf("file ví dụ nội trang sau khi bỏ comment không phải JSON hợp lệ (người dùng chép là gặp họa): %v", err)
 	}
-	if cfg.Provider == “” || cfg.ModelName == “” {
-		t.Fatal(“file ví dụ phải cung cấp provider/model mặc định”)
+	if cfg.Provider == "" || cfg.ModelName == "" {
+		t.Fatal("file ví dụ phải cung cấp provider/model mặc định")
 	}
 	if _, ok := cfg.Providers[cfg.Provider]; !ok {
-		t.Errorf(“provider cấp cao nhất %q trong ví dụ không trỏ đến mục trong providers — mẫu con trỏ chính nó bị treo lơ lửng”, cfg.Provider)
+		t.Errorf("provider cấp cao nhất %q trong ví dụ không trỏ đến mục trong providers — mẫu con trỏ chính nó bị treo lơ lửng", cfg.Provider)
 	}
-	if !contains(exampleConfig, “con trỏ”) {
-		t.Error(“file ví dụ phải giải thích rõ \”provider là con trỏ\” — tránh để bẫy nhận thức của #37 tái diễn”)
+	if !contains(exampleConfig, "con trỏ") {
+		t.Error("file ví dụ phải giải thích rõ \"provider là con trỏ\" — tránh để bẫy nhận thức của #37 tái diễn")
 	}
 }
 
@@ -236,4 +237,51 @@ func contains(s, sub string) bool {
 		}
 	}
 	return false
+}
+
+// File cấu hình chứa api_key: SaveConfig phải ghi 0600 (kể cả khi ghi đè file cũ 0644),
+// LoadConfig phải tự thu hẹp file người dùng tự tạo với quyền rộng.
+func TestConfigFilePermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows không dùng permission bits kiểu Unix")
+	}
+	dir := t.TempDir()
+	path := filepath.Join(dir, "sub", "config.json")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(validGlobal), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := LoadConfigFile(path); err != nil {
+		t.Fatalf("LoadConfigFile: %v", err)
+	}
+	assertPerm(t, path, configFilePerm)
+
+	if err := os.Chmod(path, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := SaveConfig(path, Config{Provider: "openrouter"}); err != nil {
+		t.Fatalf("SaveConfig: %v", err)
+	}
+	assertPerm(t, path, configFilePerm)
+
+	fresh := filepath.Join(dir, "new", "config.json")
+	if err := SaveConfig(fresh, Config{Provider: "openrouter"}); err != nil {
+		t.Fatalf("SaveConfig: %v", err)
+	}
+	assertPerm(t, fresh, configFilePerm)
+	assertPerm(t, filepath.Dir(fresh), configDirPerm)
+}
+
+func assertPerm(t *testing.T, path string, want os.FileMode) {
+	t.Helper()
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := info.Mode().Perm(); got != want {
+		t.Errorf("%s: quyền %v, mong đợi %v", path, got, want)
+	}
 }
