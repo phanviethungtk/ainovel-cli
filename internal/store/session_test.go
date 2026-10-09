@@ -139,3 +139,19 @@ func readJSONL(t *testing.T, path string) []map[string]any {
 	}
 	return out
 }
+
+func TestExtractChapter(t *testing.T) {
+	cases := map[string]string{
+		"Viết chương 4":       "ch04",
+		"Viết lại chương 3":   "ch03",
+		"Đánh bóng Chương 12": "ch12",
+		"写第 5 章":              "ch05",
+		"Tạo tóm tắt tập 1":   "",
+		"Viết chương 0":       "",
+	}
+	for task, want := range cases {
+		if got := extractChapter(task); got != want {
+			t.Errorf("extractChapter(%q) = %q, want %q", task, got, want)
+		}
+	}
+}

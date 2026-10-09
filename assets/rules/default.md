@@ -11,7 +11,7 @@
 # fatigue_words được hợp nhất theo từng từ, cùng một từ thì nguồn gần hơn ghi đè ngưỡng.
 # Xem chi tiết ngữ nghĩa các trường tại rules.md.example ở thư mục gốc dự án.
 
-# Giới hạn số từ mỗi chương: cảnh báo nếu lệch <20%; lỗi nếu lệch ≥20%.
+# Giới hạn số chữ mỗi chương (tiếng Việt đếm theo âm tiết): cảnh báo nếu lệch <20%; lỗi nếu lệch ≥20%.
 chapter_words: 3000-6000
 
 # Danh sách cụm từ cấm: xuất hiện ≥1 lần là error. Bộ kiểm tra so khớp chuỗi con

@@ -3,6 +3,8 @@ package rules
 import (
 	"regexp"
 	"strings"
+
+	"github.com/voocel/ainovel-cli/internal/domain"
 )
 
 // Lint kiểm tra đường đáy tích hợp sẵn: quét phần chính văn tìm tàn dư cơ chế,
@@ -12,11 +14,18 @@ import (
 //
 // Hiện có ba loại (toàn bộ từ lỗi thực chứng của sản phẩm chạy dài thực tế):
 //   - markdown_residue: chính văn còn sót ** in đậm, dòng tiêu đề # ngoài dòng đầu (xuất txt sẽ lộ ký tự)
-//   - non_cjk_fragments: đoạn ký tự Latin liên tiếp (mô hình trộn ngôn ngữ, ví dụ chính văn tiếng Trung lẫn "pattern")
+//   - non_cjk_fragments: chính văn tiếng Trung lẫn đoạn ký tự Latin (ví dụ "pattern")
+//   - cjk_fragments: chính văn tiếng Việt lẫn Hán tự (mô hình trôi về tiếng Trung)
+//
+// Hai loại trộn ngôn ngữ loại trừ nhau: ngôn ngữ chính được xác định theo số ký tự Hán so với chữ Latin.
 func Lint(text string) []Violation {
 	var vs []Violation
 	vs = appendMarkdownResidue(vs, text)
-	vs = appendNonCJKFragments(vs, text)
+	if domain.IsHanDominant(text) {
+		vs = appendNonCJKFragments(vs, text)
+	} else {
+		vs = appendCJKFragments(vs, text)
+	}
 	return vs
 }
 
@@ -54,12 +63,23 @@ func appendMarkdownResidue(vs []Violation, text string) []Violation {
 	return vs
 }
 
-var latinFragmentRe = regexp.MustCompile(`[A-Za-z]{2,}`)
+var (
+	latinFragmentRe = regexp.MustCompile(`[A-Za-z]{2,}`)
+	hanFragmentRe   = regexp.MustCompile(`\p{Han}+`)
+)
 
 // appendNonCJKFragments báo cáo tổng số lần xuất hiện đoạn ký tự Latin và các ví dụ đã loại trùng.
 // Tiếng Anh hợp lệ của thể loại hiện đại (tên thương hiệu/viết tắt) cũng sẽ bị phát hiện — sự thật mức warning, để bộ phận đánh giá phán quyết theo thể loại.
 func appendNonCJKFragments(vs []Violation, text string) []Violation {
-	matches := latinFragmentRe.FindAllString(text, -1)
+	return appendFragments(vs, "non_cjk_fragments", latinFragmentRe.FindAllString(text, -1))
+}
+
+// appendCJKFragments báo cáo Hán tự lẫn trong chính văn tiếng Việt (sự thật mức warning).
+func appendCJKFragments(vs []Violation, text string) []Violation {
+	return appendFragments(vs, "cjk_fragments", hanFragmentRe.FindAllString(text, -1))
+}
+
+func appendFragments(vs []Violation, rule string, matches []string) []Violation {
 	if len(matches) == 0 {
 		return vs
 	}
@@ -75,7 +95,7 @@ func appendNonCJKFragments(vs []Violation, text string) []Violation {
 		}
 	}
 	return append(vs, Violation{
-		Rule:     "non_cjk_fragments",
+		Rule:     rule,
 		Target:   strings.Join(examples, "、"),
 		Actual:   len(matches),
 		Severity: SeverityWarning,

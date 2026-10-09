@@ -1,14 +1,14 @@
 #!/bin/sh
 # ainovel-cli 一键安装脚本
 #
-#   curl -fsSL https://raw.githubusercontent.com/voocel/ainovel-cli/main/scripts/install.sh | sh
-#   curl -fsSL https://raw.githubusercontent.com/voocel/ainovel-cli/main/scripts/install.sh | sh -s -- v1.2.3
+#   curl -fsSL https://raw.githubusercontent.com/phanviethungtk/ainovel-cli/main/scripts/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/phanviethungtk/ainovel-cli/main/scripts/install.sh | sh -s -- v1.2.3
 #
 # 自定义安装目录： AINOVEL_INSTALL_DIR=~/.local/bin curl -fsSL ... | sh
 # 指定版本：AINOVEL_VERSION=v1.2.3 curl -fsSL ... | sh
 set -e
 
-REPO="voocel/ainovel-cli"
+REPO="phanviethungtk/ainovel-cli"
 BIN="ainovel-cli"
 DEST="${AINOVEL_INSTALL_DIR:-/usr/local/bin}"
 VERSION="${AINOVEL_VERSION:-${1:-latest}}"
@@ -48,12 +48,35 @@ URL=$(printf '%s\n' "$RELEASE" \
 	| grep "_${OS}_${ARCH}.tar.gz" \
 	| head -1 | cut -d '"' -f 4)
 [ -n "$URL" ] || { echo "未找到 ${OS}_${ARCH} 安装包，请到 https://github.com/$REPO/releases 手动下载"; exit 1; }
+SUMS_URL=$(printf '%s\n' "$RELEASE" \
+	| grep "browser_download_url" \
+	| grep "_checksums.txt" \
+	| head -1 | cut -d '"' -f 4)
+[ -n "$SUMS_URL" ] || { echo "release 缺少 checksums.txt，无法校验安装包，已中止"; exit 1; }
+
+if command -v sha256sum >/dev/null 2>&1; then
+	SHA256="sha256sum"
+elif command -v shasum >/dev/null 2>&1; then
+	SHA256="shasum -a 256"
+else
+	echo "需要 sha256sum 或 shasum 校验安装包"; exit 1
+fi
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
 echo "下载 $URL"
 curl -fsSL -o "$TMP/pkg.tar.gz" "$URL"
+curl -fsSL -o "$TMP/checksums.txt" "$SUMS_URL"
+
+# 校验 SHA-256：不匹配则中止，绝不安装未经校验的二进制
+ASSET=$(basename "$URL")
+WANT=$(awk -v f="$ASSET" '$2 == f || $2 == "*" f { print $1; exit }' "$TMP/checksums.txt")
+[ -n "$WANT" ] || { echo "checksums.txt 中没有 $ASSET，已中止"; exit 1; }
+GOT=$($SHA256 "$TMP/pkg.tar.gz" | cut -d ' ' -f 1)
+[ "$WANT" = "$GOT" ] || { echo "校验失败：期望 $WANT，实际 $GOT，已中止"; exit 1; }
+echo "✓ SHA-256 校验通过"
+
 tar -xzf "$TMP/pkg.tar.gz" -C "$TMP"
 
 echo "安装到 $DEST"

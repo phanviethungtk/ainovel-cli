@@ -117,32 +117,32 @@ docker build -t ainovel-cli-vi .
 ```bash
 # Linux / macOS
 docker run --rm -it \
-  -v "$PWD/config:/root/.ainovel" \
+  -v "$PWD/config:/home/ainovel/.ainovel" \
   -v "$PWD/workspace:/workspace" \
   -e TERM=xterm-256color \
   ainovel-cli-vi
 
 # Windows (PowerShell)
 docker run --rm -it `
-  -v "${PWD}\config:/root/.ainovel" `
+  -v "${PWD}\config:/home/ainovel/.ainovel" `
   -v "${PWD}\workspace:/workspace" `
   -e TERM=xterm-256color `
   ainovel-cli-vi
 
 # Windows (Command Prompt)
-docker run --rm -it -v "%CD%\config:/root/.ainovel" -v "%CD%\workspace:/workspace" -e TERM=xterm-256color ainovel-cli-vi
+docker run --rm -it -v "%CD%\config:/home/ainovel/.ainovel" -v "%CD%\workspace:/workspace" -e TERM=xterm-256color ainovel-cli-vi
 ```
 
 > **Windows Terminal**: Mở tab mới tự động —
 > ```powershell
-> Start-Process "wt.exe" -ArgumentList "new-tab", "cmd", "/k", 'docker run --rm -it -v "%CD%\config:/root/.ainovel" -v "%CD%\workspace:/workspace" -e TERM=xterm-256color ainovel-cli-vi'
+> Start-Process "wt.exe" -ArgumentList "new-tab", "cmd", "/k", 'docker run --rm -it -v "%CD%\config:/home/ainovel/.ainovel" -v "%CD%\workspace:/workspace" -e TERM=xterm-256color ainovel-cli-vi'
 > ```
 
 **Chế độ không giao diện** (headless, chạy trên server):
 
 ```bash
 docker run --rm \
-  -v "$PWD/config:/root/.ainovel" \
+  -v "$PWD/config:/home/ainovel/.ainovel" \
   -v "$PWD/workspace:/workspace" \
   ainovel-cli-vi \
   --headless --prompt "Viết tiểu thuyết cung đấu, nhân vật chính là cô lao công xuất thân thấp kém"
@@ -450,6 +450,22 @@ workspace/output/novel/
 ---
 
 ## Troubleshooting
+
+### Docker báo `permission denied` khi ghi `config/` hoặc `workspace/`
+
+**Nguyên nhân**: Image chạy bằng user thường `ainovel` (UID 1000), không phải root. Thư mục mount phải ghi được bởi UID đó. Nếu trước đây bạn mount vào `/root/.ainovel`, hãy đổi sang `/home/ainovel/.ainovel`.
+
+**Giải pháp** (Linux; Docker Desktop trên Windows/macOS thường không gặp):
+```bash
+# Cách 1: chạy container bằng UID của bạn
+docker run --rm -it --user "$(id -u):$(id -g)" \
+  -v "$PWD/config:/home/ainovel/.ainovel" -v "$PWD/workspace:/workspace" ainovel-cli-vi
+
+# Cách 2: chuyển quyền thư mục cho UID 1000
+sudo chown -R 1000:1000 config workspace
+```
+
+---
 
 ### App loop không dừng khi mới khởi động
 

@@ -1032,11 +1032,11 @@ func truncate(s string, maxRunes int) string {
 	return string(runes[:maxRunes]) + "..."
 }
 
-// ImportFrom khởi động một lần nhập khẩu phản suy từ tiểu thuyết bên ngoài: phân đoạn → phản suy foundation → phân tích từng chương lưu xuống đĩa.
-// Loại trừ lẫn nhau với Coordinator; sau khi nhập khẩu xong người gọi có thể lập tức Resume() để tiếp tục viết.
+// ImportFrom khởi động một lần nhập truyện phản suy từ tiểu thuyết bên ngoài: phân đoạn → phản suy foundation → phân tích từng chương lưu xuống đĩa.
+// Loại trừ lẫn nhau với Coordinator; sau khi nhập truyện xong người gọi có thể lập tức Resume() để tiếp tục viết.
 // Kênh sự kiện trả về được đóng bởi imp.Run, người gọi có trách nhiệm tiêu thụ (đầy thì bỏ để tránh chặn goroutine phân tích).
 func (h *Host) ImportFrom(ctx context.Context, opts imp.Options) (<-chan imp.Event, error) {
-	if err := h.guardExclusive("nhập khẩu"); err != nil {
+	if err := h.guardExclusive("nhập truyện"); err != nil {
 		return nil, err
 	}
 
@@ -1074,9 +1074,9 @@ func (h *Host) Simulate(ctx context.Context) (<-chan sim.Event, error) {
 	return sim.Run(ctx, deps, sim.Options{SourceDir: filepath.Join(wd, "simulate")})
 }
 
-// ImportSimulationProfile nhập khẩu hồ sơ hành văn mô phỏng đã tạo trước đó.
+// ImportSimulationProfile nhập hồ sơ hành văn mô phỏng đã tạo trước đó.
 func (h *Host) ImportSimulationProfile(ctx context.Context, path string) (<-chan sim.Event, error) {
-	if err := h.guardExclusive("nhập khẩu hồ sơ hành văn mô phỏng"); err != nil {
+	if err := h.guardExclusive("nhập hồ sơ hành văn mô phỏng"); err != nil {
 		return nil, err
 	}
 	return sim.RunImport(ctx, h.store, path)

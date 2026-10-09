@@ -23,8 +23,20 @@ RUN apk add --no-cache \
     ca-certificates \
     tzdata
 
+# Chạy bằng user thường (UID 1000 khớp user mặc định trên đa số máy Linux,
+# để file ghi ra volume không thuộc root). Cấu hình mount vào /home/ainovel/.ainovel.
+RUN addgroup -g 1000 ainovel \
+    && adduser -D -u 1000 -G ainovel -h /home/ainovel ainovel \
+    && mkdir -p /workspace /home/ainovel/.ainovel \
+    && chown ainovel:ainovel /workspace /home/ainovel/.ainovel \
+    && chmod 700 /home/ainovel/.ainovel
+
+ENV HOME=/home/ainovel
+
 WORKDIR /workspace
 
 COPY --from=builder /out/ainovel-cli /usr/local/bin/ainovel-cli
+
+USER ainovel
 
 ENTRYPOINT ["ainovel-cli"]

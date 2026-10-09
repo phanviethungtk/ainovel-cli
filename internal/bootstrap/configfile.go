@@ -7,10 +7,17 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 )
 
 const configDirName = ".ainovel"
+
+// File cấu hình chứa api_key nên chỉ chủ sở hữu được đọc/ghi.
+const (
+	configDirPerm  os.FileMode = 0o700
+	configFilePerm os.FileMode = 0o600
+)
 
 // DefaultConfigPath trả về đường dẫn file cấu hình toàn cục ~/.ainovel/config.json.
 func DefaultConfigPath() string {
@@ -38,7 +45,7 @@ func configDir() (string, error) {
 		return "", fmt.Errorf("home dir: %w", err)
 	}
 	dir := filepath.Join(home, configDirName)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, configDirPerm); err != nil {
 		return "", fmt.Errorf("create config dir: %w", err)
 	}
 	return dir, nil
@@ -123,6 +130,7 @@ func loadJSONFile(path string) (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+	restrictConfigPerm(path)
 	cleaned := stripJSONComments(data)
 	var cfg Config
 	if err := json.Unmarshal(cleaned, &cfg); err != nil {
@@ -278,7 +286,7 @@ func WriteStartupError(msg string) string {
 	if dir == "" {
 		return ""
 	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, configDirPerm); err != nil {
 		return ""
 	}
 	path := filepath.Join(dir, "last-error.log")
@@ -294,13 +302,36 @@ func WriteStartupError(msg string) string {
 }
 
 // SaveConfig ghi cấu hình vào đường dẫn chỉ định (định dạng JSON, căn lề đẹp).
+// File chứa api_key nên chỉ chủ sở hữu được đọc (0600).
 func SaveConfig(path string, cfg Config) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), configDirPerm); err != nil {
 		return err
 	}
 	data, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, data, 0o644)
+	if err := os.WriteFile(path, data, configFilePerm); err != nil {
+		return err
+	}
+	// WriteFile chỉ áp quyền khi tạo mới; file cũ (0644) cần chmod lại.
+	return os.Chmod(path, configFilePerm)
+}
+
+// restrictConfigPerm thu hẹp quyền của file cấu hình người dùng tự tạo (thường là 0644)
+// về 0600 để user khác trên cùng máy không đọc được api_key. Best-effort: thất bại
+// (ví dụ volume Docker trên Windows) chỉ ghi cảnh báo, không chặn khởi động.
+func restrictConfigPerm(path string) {
+	if runtime.GOOS == "windows" {
+		return
+	}
+	info, err := os.Stat(path)
+	if err != nil || info.Mode().Perm()&0o077 == 0 {
+		return
+	}
+	if err := os.Chmod(path, configFilePerm); err != nil {
+		slog.Warn("File cấu hình đang cho user khác đọc được, không thể thu hẹp quyền (hãy chạy chmod 600)", "module", "config", "path", path, "err", err)
+		return
+	}
+	slog.Info("Đã thu hẹp quyền file cấu hình về 0600", "module", "config", "path", path, "old", info.Mode().Perm().String())
 }

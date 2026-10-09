@@ -3,6 +3,7 @@ package version
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -79,5 +80,50 @@ func TestReplaceExecutable(t *testing.T) {
 	}
 	if _, err := os.Stat(dst + ".old"); !os.IsNotExist(err) {
 		t.Fatalf("backup should be removed, err=%v", err)
+	}
+}
+
+func TestSelectChecksumAssetRequired(t *testing.T) {
+	rel := &release{TagName: "v1.2.3", Assets: []releaseAsset{{Name: "ainovel-cli_v1.2.3_Linux_x86_64.tar.gz", BrowserDownloadURL: "x"}}}
+	if _, err := selectChecksumAsset(rel); err == nil {
+		t.Fatal("release thiếu checksums phải bị từ chối")
+	}
+	rel.Assets = append(rel.Assets, releaseAsset{Name: "ainovel-cli_checksums.txt", BrowserDownloadURL: "sum"})
+	asset, err := selectChecksumAsset(rel)
+	if err != nil || asset.BrowserDownloadURL != "sum" {
+		t.Fatalf("selectChecksumAsset = %+v, %v", asset, err)
+	}
+}
+
+func TestVerifyChecksum(t *testing.T) {
+	dir := t.TempDir()
+	archive := filepath.Join(dir, "pkg.tar.gz")
+	if err := os.WriteFile(archive, []byte("hello"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// sha256("hello")
+	const sum = "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+	name := "ainovel-cli_1.2.3_Linux_x86_64.tar.gz"
+	sums := filepath.Join(dir, "checksums.txt")
+	write := func(content string) {
+		t.Helper()
+		if err := os.WriteFile(sums, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	write("deadbeef  other.tar.gz\n" + sum + "  " + name + "\n")
+	if err := verifyChecksum(archive, sums, name); err != nil {
+		t.Fatalf("checksum đúng phải qua: %v", err)
+	}
+
+	write(strings.Repeat("0", 64) + "  " + name + "\n")
+	if err := verifyChecksum(archive, sums, name); err == nil {
+		t.Fatal("checksum sai phải bị từ chối")
+	}
+
+	write(sum + "  other.tar.gz\n")
+	if err := verifyChecksum(archive, sums, name); err == nil {
+		t.Fatal("thiếu dòng cho asset phải bị từ chối")
 	}
 }

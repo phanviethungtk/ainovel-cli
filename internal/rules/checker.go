@@ -3,7 +3,8 @@ package rules
 import (
 	"fmt"
 	"strings"
-	"unicode/utf8"
+
+	"github.com/voocel/ainovel-cli/internal/domain"
 )
 
 // Check thực hiện kiểm tra cơ học nội dung chương theo các quy tắc có cấu trúc, trả về danh sách vi phạm thực tế.
@@ -22,7 +23,7 @@ func Check(text string, wordCount int, s Structured) []Violation {
 		return nil
 	}
 	if wordCount < 0 {
-		wordCount = utf8.RuneCountInString(text)
+		wordCount = domain.WordCount(text)
 	}
 
 	var violations []Violation

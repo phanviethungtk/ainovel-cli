@@ -116,7 +116,7 @@ func TestContextToolReportsWarningsForCorruptedState(t *testing.T) {
 	if !containsWarning(payload.Warnings, "progress") {
 		t.Fatalf("expected progress warning, got %v", payload.Warnings)
 	}
-	if !strings.Contains(payload.Summary, "告警:") {
+	if !strings.Contains(payload.Summary, "cảnh-báo:") {
 		t.Fatalf("expected loading summary to contain warning count, got %q", payload.Summary)
 	}
 }
@@ -524,10 +524,10 @@ func TestContextToolSelectedMemoryRecallsStoryThreadsAndReviewLessons(t *testing
 	if containsRecallSummary(payload.Selected.StoryThreads, "建议回看第") {
 		t.Fatalf("expected related_chapters not to be duplicated into story_threads, got %+v", payload.Selected.StoryThreads)
 	}
-	if !containsRecallSummary(payload.Selected.ReviewLessons, "contract 漏项") {
+	if !containsRecallSummary(payload.Selected.ReviewLessons, "thiếu mục contract") {
 		t.Fatalf("expected review lesson recall to mention contract miss, got %+v", payload.Selected.ReviewLessons)
 	}
-	if !strings.Contains(payload.Summary, "线索召回:") || !strings.Contains(payload.Summary, "评审召回:") {
+	if !strings.Contains(payload.Summary, "gợi-nhớ-tuyến-truyện:") || !strings.Contains(payload.Summary, "gợi-nhớ-đánh-giá:") {
 		t.Fatalf("expected loading summary to report selected memory, got %q", payload.Summary)
 	}
 }
@@ -583,14 +583,14 @@ func TestContextToolSelectedMemorySurfacesAgingForeshadow(t *testing.T) {
 		t.Fatalf("Unmarshal: %v", err)
 	}
 
-	// Hai phục bút treo lâu phải được bù vào, kèm chú thích tuổi tài khoản "未回收".
+	// Hai phục bút treo lâu phải được bù vào, kèm chú thích tuổi tài khoản "chưa thu hồi".
 	if !containsRecallSummary(payload.Selected.StoryThreads, "上古封印的裂隙") {
 		t.Fatalf("expected aging foreshadow to surface despite no relevance, got %+v", payload.Selected.StoryThreads)
 	}
 	if !containsRecallSummary(payload.Selected.StoryThreads, "失落的血脉") {
 		t.Fatalf("expected second aging foreshadow to surface, got %+v", payload.Selected.StoryThreads)
 	}
-	if !containsRecallSummary(payload.Selected.StoryThreads, "未回收") {
+	if !containsRecallSummary(payload.Selected.StoryThreads, "chưa thu hồi") {
 		t.Fatalf("expected aging item to carry overdue annotation, got %+v", payload.Selected.StoryThreads)
 	}
 	// Phục bút gần đây (tuổi tài khoản <30 và không liên quan) không được bù vào.

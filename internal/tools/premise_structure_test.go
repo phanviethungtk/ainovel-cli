@@ -22,18 +22,85 @@ func TestParsePremiseSections(t *testing.T) {
 旧有修炼路线失效，必须转向禁术体系。
 `
 
+	// Premise tiếng Trung (truyện tạo trước khi Việt hoá) vẫn được nhận, khoá là tên chuẩn tiếng Việt.
 	sections := parsePremiseSections(premise)
-	if sections["题材和基调"] == "" {
-		t.Fatalf("expected 题材和基调 section, got %+v", sections)
+	for _, want := range []string{headingGenreTone, headingGenrePosition, headingConflict, headingMidTurn} {
+		if sections[want] == "" {
+			t.Fatalf("expected %s section, got %+v", want, sections)
+		}
 	}
-	if sections["题材定位"] == "" {
-		t.Fatalf("expected 题材定位 section, got %+v", sections)
+}
+
+// Premise đúng như prompt architect-long.md yêu cầu: tiêu đề tiếng Việt, đôi khi model
+// chép cả chú thích sau tên hoặc viết hoa khác.
+func TestPremiseStructureVietnameseLong(t *testing.T) {
+	premise := `# Đêm Dài Sắp Sáng
+
+## Thể loại và tông điệu
+Huyền huyễn phương Đông.
+
+## Định vị thể loại (độc giả mục tiêu, điểm tiêu dùng cốt lõi)
+Thăng cấp.
+
+## Xung đột cốt lõi
+Xung đột.
+
+## Mục tiêu nhân vật chính
+Mục tiêu.
+
+## Hướng kết cục
+Kết cục.
+
+## Vùng cấm viết
+Cấm.
+
+## Điểm bán hàng khác biệt
+Điểm bán.
+
+## Điểm móc khác biệt: điểm độc đáo
+Điểm móc.
+
+## Cam kết thực hiện cốt lõi
+Cam kết.
+
+## Động cơ truyện
+Động cơ.
+
+## Tuyến Quan Hệ/Phát Triển
+Quan hệ.
+
+## Lộ trình nâng cấp
+Nâng cấp.
+
+## Bước ngoặt giữa chuyện
+Bước ngoặt.
+
+## Mệnh đề kết cục
+Mệnh đề.
+`
+
+	structure := premiseStructure(premise, domain.PlanningTierLong)
+	if ready, _ := structure["template_ready"].(bool); !ready {
+		t.Fatalf("expected template_ready, got %+v", structure)
 	}
-	if sections["核心冲突"] == "" {
-		t.Fatalf("expected 核心冲突 section, got %+v", sections)
+}
+
+// Biến thể tên trong architect-short.md / import-foundation.md phải quy về cùng tên chuẩn.
+func TestPremiseHeadingVietnameseVariants(t *testing.T) {
+	cases := map[string]string{
+		"## Thể loại và sắc thái":        headingGenreTone,
+		"## Điểm bán khác biệt":          headingSellingPoints,
+		"## Mục tiêu của nhân vật chính": headingGoal,
+		"## Hướng kết thúc":              headingEnding,
+		"## Tính phù hợp truyện ngắn":    headingShortFit,
 	}
-	if sections["中段转折"] == "" {
-		t.Fatalf("expected 中期转向 alias normalized to 中段转折, got %+v", sections)
+	for line, want := range cases {
+		if got, ok := canonicalPremiseHeading(line); !ok || got != want {
+			t.Errorf("canonicalPremiseHeading(%q) = %q, %v; want %q", line, got, ok, want)
+		}
+	}
+	if _, ok := canonicalPremiseHeading("## Tiêu đề lạ"); ok {
+		t.Error("tiêu đề không thuộc template không được nhận")
 	}
 }
 

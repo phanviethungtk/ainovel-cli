@@ -13,7 +13,8 @@
 # chưa mở; khi nào cần tải file nội trang theo thể loại một cách máy móc thì mới khôi phục loader hai giai đoạn.
 genre: xianxia
 
-# Số từ mỗi chương (min-max). Lệch < 20% báo warning; ≥ 20% báo error.
+# Số chữ mỗi chương (min-max). Tiếng Việt đếm theo âm tiết (một Hán tự ≈ một âm tiết, nên cùng
+# ngưỡng dùng được cho cả hai ngôn ngữ). Lệch < 20% báo warning; ≥ 20% báo error.
 chapter_words: 3000-6000
 
 # Danh sách đen ký tự/ký hiệu. Xuất hiện ≥ 1 lần là error.
@@ -25,15 +26,15 @@ forbidden_chars:
 # chỉ điền "chuỗi cố định có độ dài xác định"; các mẫu có biến (ví dụ "không phải X mà là Y") không thể bắt bằng khớp chuỗi đen,
 # nên viết vào phần markdown bên dưới để biên tập viên phán đoán theo ngữ nghĩa.
 forbidden_phrases:
-  - "某种程度上"
-  - "值得注意的是"
+  - "theo một nghĩa nào đó"
+  - "đáng chú ý là"
 
 # Ngưỡng từ sáo rỗng: chỉ báo warning khi vượt quá N lần trong chương (không cộng dồn qua các chương).
-# Cũng hỗ trợ dạng danh sách: - 不禁  - 竟然  ← ngưỡng mặc định là 1
+# Cũng hỗ trợ dạng danh sách: - không khỏi  - bỗng nhiên  ← ngưỡng mặc định là 1
 fatigue_words:
-  不禁: 1
-  竟然: 1
-  仿佛: 2
+  không khỏi: 1
+  bỗng nhiên: 1
+  dường như: 2
 ---
 
 # Phong cách

@@ -27,10 +27,10 @@ func TestComputePatterns(t *testing.T) {
 		t.Fatal("expected stats")
 	}
 	want := map[string]int{
-		"矫正句『不是…(而)是…』":          6,
-		"计时量词『X息/X瞬』":            6,
-		"明喻『像一/仿佛/如同/宛如』":        6,
-		"沉默节拍『沉默了/没有说话/没有回头』": 6,
+		"Câu chỉnh chuẩn『không phải… mà là…』":               6,
+		"Lượng từ thời gian『một hơi thở/trong chớp mắt』":    6,
+		"So sánh trực tiếp『như một/như thể/tựa như』":        6,
+		"Nhịp im lặng『im lặng/không nói gì/không quay đầu』": 6,
 	}
 	for _, p := range s.Patterns {
 		if w, ok := want[p.Name]; ok && p.Total != w {
@@ -129,5 +129,85 @@ func TestComputeTitleFormats(t *testing.T) {
 	s = Compute(Input{Chapters: chapters, Titles: []string{"风起", "云涌"}})
 	if s.TitleFormats != nil {
 		t.Errorf("uniform titles should not report: %+v", s.TitleFormats)
+	}
+}
+
+func TestComputePatternsVietnamese(t *testing.T) {
+	body := "Hắn không phải tức giận, mà là sợ hãi. Hắn im lặng trong chớp mắt. Ánh mắt như thể một ngọn đèn.\n"
+	chapters := make([]string, 6)
+	for i := range chapters {
+		chapters[i] = "# Chương 1\n" + body
+	}
+	s := Compute(Input{Chapters: chapters})
+	if s == nil {
+		t.Fatal("expected stats")
+	}
+	if len(s.Patterns) != 4 {
+		t.Fatalf("want 4 pattern classes, got %d: %+v", len(s.Patterns), s.Patterns)
+	}
+	for _, p := range s.Patterns {
+		if p.Total != 6 {
+			t.Errorf("%s total: got %d want 6", p.Name, p.Total)
+		}
+	}
+}
+
+func TestComputeTopPhrasesVietnamese(t *testing.T) {
+	// "khóe môi khẽ nhếch lên" là cửa miệng; "Lâm Phong" là tên nhân vật nên mọi cụm chứa tên bị lọc
+	line := "Lâm Phong khóe môi khẽ nhếch lên, nhìn về phía núi xa.\n"
+	chapters := make([]string, 10)
+	for i := range chapters {
+		chapters[i] = "# Chương 1\n" + strings.Repeat(line, 3)
+	}
+	s := Compute(Input{Chapters: chapters, Stopwords: []string{"Lâm Phong"}})
+	if s == nil {
+		t.Fatal("expected stats")
+	}
+	var hasTic, hasName bool
+	for _, p := range s.TopPhrases {
+		if strings.Contains(p.Text, "khóe môi khẽ nhếch") {
+			hasTic = true
+		}
+		if strings.Contains(strings.ToLower(p.Text), "phong") || strings.Contains(strings.ToLower(p.Text), "lâm") {
+			hasName = true
+		}
+	}
+	if !hasTic {
+		t.Errorf("expected Vietnamese tic phrase mined, got %+v", s.TopPhrases)
+	}
+	if hasName {
+		t.Errorf("character name should be filtered, got %+v", s.TopPhrases)
+	}
+}
+
+func TestComputeVietnameseOpeningAndTitles(t *testing.T) {
+	chapters := []string{
+		"# Chương 1\nĐêm xuống, gió lạnh.",
+		"# Chương 2\nSáng sớm, sương mù dày đặc.",
+		"# Chương 3\nHắn bước vào quán trọ.",
+		"# Chương 4\nHắn thức dậy trong cơn đau.",
+		"# Chương 5\nTiếng chuông vang lên.",
+	}
+	s := Compute(Input{Chapters: chapters, Titles: []string{"Chương 1 Đêm mưa", "chương 2", "Gặp gỡ"}})
+	if s == nil {
+		t.Fatal("expected stats")
+	}
+	if s.OpeningTimeRate != 0.6 {
+		t.Errorf("opening_time_rate: got %v want 0.6", s.OpeningTimeRate)
+	}
+	if s.TitleFormats == nil || s.TitleFormats.WithPrefix != 2 || s.TitleFormats.WithoutPrefix != 1 {
+		t.Errorf("title formats: %+v", s.TitleFormats)
+	}
+}
+
+func TestComputeRepeatedSentencesVietnamese(t *testing.T) {
+	sent := "Hắn hít sâu một hơi rồi chậm rãi bước về phía trước"
+	chapters := make([]string, 5)
+	for i := range chapters {
+		chapters[i] = "# Chương 1\nMở đầu khác nhau " + strings.Repeat("x", i) + ". " + sent + ". Kết."
+	}
+	s := Compute(Input{Chapters: chapters})
+	if s == nil || len(s.RepeatedSentences) == 0 || s.RepeatedSentences[0].Chapters != 5 {
+		t.Fatalf("expected repeated Vietnamese sentence across 5 chapters, got %+v", s)
 	}
 }

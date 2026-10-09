@@ -10,7 +10,8 @@ import (
 )
 
 // defaultChapterRegex là regex mặc định để nhận dạng tiêu đề chương. Bao quát các dạng phổ biến:
-// tiếng Trung (第N章/回/话/卷/节/幕、卷N、序章/楔子/尾声/番外/外传, v.v.)
+// tiếng Trung (第N章/回/话/卷/节/幕、卷N、序章/楔子/尾声/番外/外传, v.v.),
+// tiếng Việt (Chương N, Quyển N, Mở đầu/Vĩ thanh/Ngoại truyện…)
 // và tiếng Anh (Chapter N, Prologue, Epilogue), tương thích tiền tố Markdown (# / ##),
 // tiền tố "正文 第N章" trong txt kiểu Qidian, cũng như tiêu đề được bọc trong【】〖〗.
 //
@@ -18,8 +19,10 @@ import (
 //   - cn    phụ đề chương số tiếng Trung (văn bản sau 第X章/回/话/卷/节/幕)
 //   - vol   phụ đề tập độc lập (văn bản sau 卷X)
 //   - sp    phụ đề đơn vị đặc biệt (văn bản sau 序章/楔子/尾声/番外)
+//   - vi    phụ đề chương tiếng Việt (văn bản sau Chương N / Quyển N / Mở đầu…)
 //   - en    phụ đề chương tiếng Anh (văn bản sau Chapter X / Prologue / Epilogue)
 //   - spkw  từ khóa đơn vị đặc biệt (dùng làm tiêu đề khi không có phụ đề, ví dụ「楔子」「番外」)
+//   - vikw  từ khóa đơn vị đặc biệt tiếng Việt (dùng làm tiêu đề khi không có phụ đề, ví dụ「Vĩ thanh」)
 //   - enkw  từ khóa đơn vị đặc biệt tiếng Anh (dùng làm tiêu đề khi không có phụ đề, ví dụ「Prologue」)
 
 // ws là nội dung lớp ký tự: khoảng trắng ASCII + khoảng trắng toàn góc. \s trong Go RE2 chỉ chứa
@@ -42,6 +45,9 @@ var defaultChapterRegex = regexp.MustCompile(
 		`|` +
 		`(?P<spkw>序章|序幕|楔子|引子|前言|序言|尾声|终章|后记|番外|外传)` +
 		`(?:[:：．\.` + ws + `]+(?P<sp>` + sub + `))?` +
+		`|` +
+		`(?:(?:Chương|Quyển)\s+\d+|(?P<vikw>Lời mở đầu|Mở đầu|Tiết tử|Vĩ thanh|Lời kết|Ngoại truyện|Phiên ngoại))` +
+		`(?:[:：．\.\-–—` + ws + `]+(?P<vi>` + sub + `))?` +
 		`|` +
 		`(?:Chapter\s+(?:\d+|[IVXLCDM]+)|(?P<enkw>Prologue|Epilogue))` +
 		`(?:[:：．\.` + ws + `]+(?P<en>` + sub + `))?` +
@@ -98,7 +104,7 @@ func splitText(text string, pattern *regexp.Regexp) []Chapter {
 // extractTitle trích xuất tiêu đề chương từ dòng khớp; ưu tiên lấy nhóm đặt tên, nếu không có thì fallback về số thứ tự chương.
 func extractTitle(line string, pattern *regexp.Regexp, loc []int, fallbackNum int) string {
 	subnames := pattern.SubexpNames()
-	priority := []string{"cn", "vol", "sp", "en", "spkw", "enkw"}
+	priority := []string{"cn", "vol", "sp", "vi", "en", "spkw", "vikw", "enkw"}
 	for _, name := range priority {
 		idx := pattern.SubexpIndex(name)
 		if idx <= 0 {
@@ -120,7 +126,7 @@ func extractTitle(line string, pattern *regexp.Regexp, loc []int, fallbackNum in
 			return t
 		}
 	}
-	return fmt.Sprintf("第%d章", fallbackNum)
+	return fmt.Sprintf("Chương %d", fallbackNum)
 }
 
 // stripTrailingNoise loại bỏ nhiễu đuôi phổ biến (ví dụ: đoạn license của Project Gutenberg, v.v.).
