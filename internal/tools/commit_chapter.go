@@ -586,7 +586,7 @@ func (t *CommitChapterTool) layeredStructurallyComplete(progress *domain.Progres
 
 // layeredBookComplete dùng dữ liệu khách quan để phán định phân lớp dài có thực sự hoàn tất không,
 // đối chiếu với các hạng mục định lượng trong danh sách kiểm tra hoàn tất của architect-long.md + dữ liệu cấu trúc.
-// Ngoài cấu trúc hoàn chỉnh còn yêu cầu phục bút归零, tuyến dài thu lại — bất kỳ điều kiện nào chưa thỏa
+// Ngoài cấu trúc hoàn chỉnh còn yêu cầu phục bút về 0, tuyến dài thu lại — bất kỳ điều kiện nào chưa thỏa
 // đều nhường lại kiến trúc sư tiếp tục expand_arc / append_volume, tuyệt đối không kết thúc khi câu chuyện chưa xong.
 // Khi không có compass thì đánh giá thận trọng là chưa hoàn tất. Đây là phán định "cấp chất lượng" cho viết tiến về phía trước,
 // nghiêm ngặt hơn layeredStructurallyComplete.
@@ -594,7 +594,7 @@ func (t *CommitChapterTool) layeredBookComplete(progress *domain.Progress) bool 
 	if !t.layeredStructurallyComplete(progress) {
 		return false
 	}
-	// 4. Phục bút hoạt động phải归零 (tất cả đã thực hiện lời hứa)
+	// 4. Phục bút hoạt động phải về 0 (tất cả đã thực hiện lời hứa)
 	if active, aerr := t.store.World.LoadActiveForeshadow(); aerr != nil || len(active) > 0 {
 		return false
 	}

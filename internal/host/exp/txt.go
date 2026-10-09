@@ -68,8 +68,8 @@ var atxTitleRe = regexp.MustCompile(`^#{1,6}\s+(.+?)\s*$`)
 // stripChapterTitleHeader loại bỏ dòng đầu nếu đó là tiêu đề chương sẽ bị trùng lặp
 // với tiêu đề thống nhất của bộ xuất. Hai trường hợp: ① "# Chương N …" / "# 第N章 …" (có số chương);
 // ② tiêu đề markdown có nội dung chính xác là tiêu đề chương hiện tại
-// (Người viết thường viết tên chương thuần túy làm tiêu đề dòng đầu, ví dụ "# 边村浮生",
-// trùng với "Chương N  边村浮生" do bộ xuất tạo ra). Các h1 khác (như "# 序章") được
+// (Người viết thường viết tên chương thuần túy làm tiêu đề dòng đầu, ví dụ "# Làng biên",
+// trùng với "Chương N  Làng biên" do bộ xuất tạo ra). Các h1 khác (như "# Mở đầu") được
 // coi là một phần của nội dung và giữ nguyên.
 // Bên gọi có trách nhiệm TrimSpace trước, nên các dòng trống đầu không cần xét.
 func stripChapterTitleHeader(content, title string) string {

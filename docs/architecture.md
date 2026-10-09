@@ -432,7 +432,7 @@ assets/
 | 2026-05-02 | agentcore `WithMaxToolErrors(0)` + `isReasoningOnlyStopAssistant`; `StreamIdleTimeout=5min`; xóa patch tiếp tục chạy `idleResumeCount` | mimo / streaming suy nghĩ chậm chạy thông |
 | 2026-06-05 | Vòng kín kế hoạch cuộn (`expand_arc`/`append_volume`) + `/import` phân tích ngược phân tầng tiếp tục viết + can thiệp độ dài người dùng | 200+ chương chạy thông lần đầu |
 
-Thực đo: hy3-preview free 12 chương / 73 phút, mimo-v2.5-pro 10 chương / 84.000 chữ (trung bình chương 8400), đều chạy xong một lần; tiểu thuyết dài gpt-5.4 《凡骨》 235 chương / 1.270.000 chữ / trung bình chương 5407, vòng kín kế hoạch cuộn chạy thông.
+Thực đo: hy3-preview free 12 chương / 73 phút, mimo-v2.5-pro 10 chương / 84.000 chữ (trung bình chương 8400), đều chạy xong một lần; tiểu thuyết dài gpt-5.4 «Phàm Cốt» (凡骨) 235 chương / 1.270.000 chữ / trung bình chương 5407, vòng kín kế hoạch cuộn chạy thông.
 
 ---
 

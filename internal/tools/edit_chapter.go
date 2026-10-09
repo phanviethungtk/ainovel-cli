@@ -18,7 +18,7 @@ import (
 //
 // Hợp đồng ghi đĩa: chỉ sửa drafts/{ch:02d}.draft.md, không được sửa trực tiếp chapters/ (bản hoàn chỉnh do commit_chapter độc quyền).
 // Ngữ nghĩa Seed: drafts không tồn tại nhưng chapters có → tự động sao chép chapters vào drafts làm điểm khởi đầu.
-// Kiểm tra归属: khi chương đã hoàn thành phải có trong hàng đợi PendingRewrites, nếu không sẽ từ chối.
+// Kiểm tra quyền sửa: khi chương đã hoàn thành phải có trong hàng đợi PendingRewrites, nếu không sẽ từ chối.
 //
 // Công cụ này là lớp bọc mỏng của agentcore.EditTool, logic tìm-thay (đối sánh đa cấp chịu lỗi, xuất diff, giữ nguyên dòng kết/BOM)
 // đều tái sử dụng triển khai thượng nguồn.
@@ -85,7 +85,7 @@ func (t *EditChapterTool) Execute(ctx context.Context, args json.RawMessage) (js
 		return nil, fmt.Errorf("old_string và new_string giống nhau, không cần sửa: %w", errs.ErrToolArgs)
 	}
 
-	// Kiểm tra归属: chương đã hoàn thành phải có trong hàng đợi tái viết, tránh làm bẩn bản hoàn chỉnh
+	// Kiểm tra quyền sửa: chương đã hoàn thành phải có trong hàng đợi tái viết, tránh làm bẩn bản hoàn chỉnh
 	if t.store.Progress.IsChapterCompleted(a.Chapter) {
 		progress, _ := t.store.Progress.Load()
 		if progress == nil || !slices.Contains(progress.PendingRewrites, a.Chapter) {
